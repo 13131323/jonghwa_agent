@@ -4,7 +4,7 @@
 
 개인 이력 및 프로젝트 정보를 기반으로 답하는 챗봇을 만든다. LangChain으로 RAG 흐름을 구성하고 ChromaDB에 문서 임베딩을 저장한다.
 
-현재는 폴더, 모듈 자리와 기본 프롬프트만 만들었다. 문서 등록, 검색, 모델 호출, 대화 실행은 아직 구현하지 않았다. LLM·임베딩 제공자, 의존성 버전, API 서버 및 웹 UI는 정하지 않았다.
+현재는 폴더, 모듈 자리, 기본 프롬프트와 ChromaDB Docker 실행 환경을 만들었다. 문서 등록, 검색, 모델 호출, 대화 실행은 아직 구현하지 않았다. LLM·임베딩 제공자, Python 의존성 버전, API 서버 및 웹 UI는 정하지 않았다.
 
 ## 디렉터리
 
@@ -13,6 +13,7 @@ jonghwa_agent/
 ├── AGENTS.md
 ├── README.md
 ├── pyproject.toml
+├── compose.yaml
 ├── .env.example
 ├── .gitignore
 ├── docs/
@@ -41,6 +42,7 @@ jonghwa_agent/
 | `AGENTS.md` | 이 저장소에서 작업하는 개발 에이전트의 지침 |
 | `README.md` | 구현 후 설치 및 실행 방법 안내 |
 | `pyproject.toml` | Python 프로젝트 정보 및 의존성 정의 |
+| `compose.yaml` | ChromaDB 컨테이너 실행, 로컬 포트와 데이터 저장 경로 설정 |
 | `.env.example` | 필요한 환경변수의 예시. 실제 값은 `.env`에서 관리 |
 | `docs/architecture.md` | 폴더별 책임과 처리 흐름 기록 |
 | `data/documents/` | 이력서, 포트폴리오, 프로젝트 설명 등 원본 자료 |
@@ -71,6 +73,15 @@ main.py: 질문 입력
 ```
 
 `config.py`는 두 흐름에서 필요한 설정을 제공한다. 개인 이력과 프로젝트 사실은 `data/documents/`에 두고, 말투와 답변 지침은 `prompts/system.txt`에 둔다.
+
+## ChromaDB 실행 구조
+
+- ChromaDB는 `chromadb/chroma:1.5.9` 이미지로 실행한다. 이미지 버전은 고정한다.
+- 호스트의 `data/chroma/`를 컨테이너의 `/data`에 연결한다.
+- 호스트의 `127.0.0.1:${CHROMA_PORT:-8000}`을 컨테이너의 `8000` 포트로 연결한다. `.env`는 Docker Compose가 읽는다.
+- Python 코드는 로컬에서 실행하고 ChromaDB에는 HTTP 클라이언트로 연결할 예정이다. 현재 `config.py` 등은 자리만 있으며 연결 코드는 미구현이다.
+- 인증 없이 로컬 개발에 사용하는 구성이다. 원격 배포 시 접근 제어는 별도로 설계한다.
+- 영속 저장 경로와 HTTP 연결 방식은 [Chroma 공식 Docker 가이드](https://github.com/chroma-core/chroma/blob/1.5.9/docs/mintlify/guides/deploy/docker.mdx)를 기준으로 한다.
 
 ## 저장 규칙
 
