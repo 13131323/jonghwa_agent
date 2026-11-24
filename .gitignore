@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+
+data/documents/*
+!data/documents/.gitkeep
+data/chroma/*
+!data/chroma/.gitkeep
+
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/

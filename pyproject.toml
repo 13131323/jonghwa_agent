@@ -1,0 +1,5 @@
+[project]
+name = "jonghwa-agent"
+version = "0.1.0"
+description = "개인 이력 및 프로젝트 정보를 기반으로 답변하는 AI 챗봇 에이전트"
+# LangChain 및 ChromaDB 의존성은 구현 시 호환 버전을 확인해 추가합니다.
