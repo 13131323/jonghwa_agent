@@ -4,7 +4,7 @@
 
 개인 이력 및 프로젝트 정보를 기반으로 답하는 챗봇을 만든다. LangChain으로 RAG 흐름을 구성하고 ChromaDB에 문서 임베딩을 저장한다.
 
-현재는 폴더, 모듈 자리, 기본 프롬프트와 ChromaDB Docker 실행 환경을 만들었다. 문서 등록, 검색, 모델 호출, 대화 실행은 아직 구현하지 않았다. LLM·임베딩 제공자, Python 의존성 버전, API 서버 및 웹 UI는 정하지 않았다.
+ChromaDB Docker 실행 환경, Markdown 문서 적재와 유사도 검색을 구현했다. 임베딩은 OpenAI `text-embedding-3-small`을 사용한다. `test/test_ingest.py`에서 적재 무결성과 질문 10개의 검색 근거를 검사한다. 답변 생성용 LLM, 대화 실행, API 서버 및 웹 UI는 아직 구현하지 않았다.
 
 ## 디렉터리
 
@@ -17,7 +17,11 @@ jonghwa_agent/
 ├── .env.example
 ├── .gitignore
 ├── docs/
-│   └── architecture.md
+│   ├── architecture.md
+│   └── ingest-validation.md
+├── test/
+│   ├── test_ingest.py
+│   └── reports/                 # 로컬 평가 보고서, Git 제외
 ├── data/
 │   ├── documents/
 │   │   └── .gitkeep
@@ -45,6 +49,8 @@ jonghwa_agent/
 | `compose.yaml` | ChromaDB 컨테이너 실행, 로컬 포트와 데이터 저장 경로 설정 |
 | `.env.example` | 필요한 환경변수의 예시. 실제 값은 `.env`에서 관리 |
 | `docs/architecture.md` | 폴더별 책임과 처리 흐름 기록 |
+| `docs/ingest-validation.md` | 청킹·적재 방식과 검색 평가 기준 |
+| `test/test_ingest.py` | 로컬 테스트, 실제 DB 검사, 질문 10개 검색 평가 |
 | `data/documents/` | 이력서, 포트폴리오, 프로젝트 설명 등 원본 자료 |
 | `data/chroma/` | ChromaDB 영속 저장소 |
 | `src/jonghwa_agent/config.py` | 모델 및 경로 등 공통 설정 |
@@ -54,17 +60,17 @@ jonghwa_agent/
 | `src/jonghwa_agent/main.py` | 로컬에서 질문을 입력하고 답변을 출력하는 진입점 |
 | `src/jonghwa_agent/prompts/system.txt` | 사용자를 대신해 답하는 방식과 근거 기반 답변 원칙 |
 
-## 구현할 처리 흐름
+## 처리 흐름
 
 자료 등록과 질문 응답을 분리한다. 질문할 때마다 원본 전체를 다시 임베딩하지 않는다.
 
 ```text
 [자료 등록]
 data/documents/
-    → ingest.py: 문서 로딩 → 청크 분할 → 임베딩 생성
-    → data/chroma/: 저장
+    → ingest.py: YAML 파싱 → 제목별 청킹 → 긴 구간 추가 분할 → 임베딩 생성
+    → HTTP ChromaDB: 저장 (컨테이너 볼륨 data/chroma/)
 
-[질문 응답]
+[질문 응답: 검색만 구현, 답변 생성은 미구현]
 main.py: 질문 입력
     → chatbot.py
         → retriever.py → ChromaDB에서 관련 자료 검색
@@ -79,7 +85,7 @@ main.py: 질문 입력
 - ChromaDB는 `chromadb/chroma:1.5.9` 이미지로 실행한다. 이미지 버전은 고정한다.
 - 호스트의 `data/chroma/`를 컨테이너의 `/data`에 연결한다.
 - 호스트의 `127.0.0.1:${CHROMA_PORT:-8000}`을 컨테이너의 `8000` 포트로 연결한다. `.env`는 Docker Compose가 읽는다.
-- Python 코드는 로컬에서 실행하고 ChromaDB에는 HTTP 클라이언트로 연결할 예정이다. 현재 `config.py` 등은 자리만 있으며 연결 코드는 미구현이다.
+- Python 코드는 로컬에서 실행하고 ChromaDB에는 HTTP 클라이언트로 연결한다. `config.py`가 `.env`와 실행 환경을 읽고 `retriever.py`가 공통 클라이언트·임베딩·검색을 제공한다.
 - 인증 없이 로컬 개발에 사용하는 구성이다. 원격 배포 시 접근 제어는 별도로 설계한다.
 - 영속 저장 경로와 HTTP 연결 방식은 [Chroma 공식 Docker 가이드](https://github.com/chroma-core/chroma/blob/1.5.9/docs/mintlify/guides/deploy/docker.mdx)를 기준으로 한다.
 

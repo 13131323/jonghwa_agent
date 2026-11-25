@@ -2,4 +2,19 @@
 name = "jonghwa-agent"
 version = "0.1.0"
 description = "개인 이력 및 프로젝트 정보를 기반으로 답변하는 AI 챗봇 에이전트"
-# LangChain 및 ChromaDB 의존성은 구현 시 호환 버전을 확인해 추가합니다.
+requires-python = ">=3.11"
+dependencies = [
+    "chromadb==1.5.9",
+    "langchain-chroma==1.2.0",
+    "langchain-openai==1.8.5",
+    "langchain-text-splitters==1.2.0",
+    "python-dotenv==1.2.4",
+    "PyYAML==6.0.4",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

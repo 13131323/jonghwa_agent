@@ -13,3 +13,6 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+
+# 검색 평가 보고서에는 개인 원문 청크가 포함됩니다.
+test/reports/
