@@ -4,7 +4,7 @@
 
 개인 이력 및 프로젝트 정보를 기반으로 답하는 챗봇을 만든다. LangChain으로 RAG 흐름을 구성하고 ChromaDB에 문서 임베딩을 저장한다.
 
-ChromaDB Docker 실행 환경, Markdown 문서 적재와 유사도 검색을 구현했다. 임베딩은 OpenAI `text-embedding-3-small`을 사용한다. `test/test_ingest.py`에서 적재 무결성과 질문 10개의 검색 근거를 검사한다. 답변 생성용 LLM, 대화 실행, API 서버 및 웹 UI는 아직 구현하지 않았다.
+ChromaDB Docker 실행 환경, Markdown 문서 적재와 유사도 검색, 검색 tool을 사용하는 LangChain 단일 에이전트를 구현했다. 임베딩은 OpenAI `text-embedding-3-small`, 답변 모델은 `gpt-5-mini`다. `test/test_ingest.py`는 적재·검색을, `test/test_agent.py`는 tool 사용과 답변을 검사한다. API 서버·웹 UI·세션 기억은 아직 구현하지 않았다.
 
 ## 디렉터리
 
@@ -18,9 +18,11 @@ jonghwa_agent/
 ├── .gitignore
 ├── docs/
 │   ├── architecture.md
-│   └── ingest-validation.md
+│   ├── ingest-validation.md
+│   └── agent-validation.md
 ├── test/
 │   ├── test_ingest.py
+│   ├── test_agent.py
 │   └── reports/                 # 로컬 평가 보고서, Git 제외
 ├── data/
 │   ├── documents/
@@ -33,6 +35,7 @@ jonghwa_agent/
         ├── config.py
         ├── ingest.py
         ├── retriever.py
+        ├── tools.py
         ├── chatbot.py
         ├── main.py
         └── prompts/
@@ -51,13 +54,16 @@ jonghwa_agent/
 | `docs/architecture.md` | 폴더별 책임과 처리 흐름 기록 |
 | `docs/ingest-validation.md` | 청킹·적재 방식과 검색 평가 기준 |
 | `test/test_ingest.py` | 로컬 테스트, 실제 DB 검사, 질문 10개 검색 평가 |
+| `test/test_agent.py` | tool 단위 테스트, 실제 모델의 tool 선택·답변 검사 |
+| `docs/agent-validation.md` | 에이전트 실행 구조와 테스트 기준 |
 | `data/documents/` | 이력서, 포트폴리오, 프로젝트 설명 등 원본 자료 |
 | `data/chroma/` | ChromaDB 영속 저장소 |
 | `src/jonghwa_agent/config.py` | 모델 및 경로 등 공통 설정 |
 | `src/jonghwa_agent/ingest.py` | 원본 문서를 읽고 청크로 나누어 임베딩을 저장 |
 | `src/jonghwa_agent/retriever.py` | 질문과 관련된 문서 청크 검색 |
-| `src/jonghwa_agent/chatbot.py` | LangChain으로 검색 결과, 시스템 프롬프트, 질문을 연결하여 답변 생성 |
-| `src/jonghwa_agent/main.py` | 로컬에서 질문을 입력하고 답변을 출력하는 진입점 |
+| `src/jonghwa_agent/tools.py` | 기존 retriever를 호출하고 청크 본문·출처를 반환하는 검색 tool |
+| `src/jonghwa_agent/chatbot.py` | LangChain 에이전트 생성, 한 질문 실행과 답변 출력 |
+| `src/jonghwa_agent/main.py` | 향후 대화 실행 진입점의 자리. 현재 미구현 |
 | `src/jonghwa_agent/prompts/system.txt` | 사용자를 대신해 답하는 방식과 근거 기반 답변 원칙 |
 
 ## 처리 흐름
@@ -70,12 +76,11 @@ data/documents/
     → ingest.py: YAML 파싱 → 제목별 청킹 → 긴 구간 추가 분할 → 임베딩 생성
     → HTTP ChromaDB: 저장 (컨테이너 볼륨 data/chroma/)
 
-[질문 응답: 검색만 구현, 답변 생성은 미구현]
-main.py: 질문 입력
-    → chatbot.py
-        → retriever.py → ChromaDB에서 관련 자료 검색
-        → 검색 자료 + prompts/system.txt + 질문 → LLM 답변 생성
-    → main.py: 답변 출력
+[질문 응답]
+chatbot.py: 질문 입력 → gpt-5-mini 에이전트
+    → 필요 시 tools.py → retriever.py → ChromaDB 검색
+    → 검색 본문·출처를 tool 응답으로 전달
+    → 에이전트가 시스템 프롬프트·질문·검색 근거로 답변 생성
 ```
 
 `config.py`는 두 흐름에서 필요한 설정을 제공한다. 개인 이력과 프로젝트 사실은 `data/documents/`에 두고, 말투와 답변 지침은 `prompts/system.txt`에 둔다.

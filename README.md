@@ -45,4 +45,16 @@ python -m venv .venv
 
 검증 파일은 로컬 테스트, 실제 DB 무결성·재임베딩 비교, 질문 10개의 top-5 근거 검색을 검사합니다. 상세 결과는 `test/reports/retrieval.json`에 저장합니다. API·DB 없이 테스트하려면 `--offline`을 붙입니다. 실제 적재와 기본 검증은 OpenAI API를 호출합니다.
 
-답변 생성과 대화 실행은 아직 구현하지 않았습니다. 폴더별 역할은 [아키텍처 문서](docs/architecture.md), 평가 기준은 [적재·검색 검증 문서](docs/ingest-validation.md)를 참고하세요.
+## 에이전트 실행·검증
+
+`.env`의 `OPENAI_CHAT_MODEL=gpt-5-mini`를 사용합니다. 가상환경을 활성화한 뒤 질문하거나 실제 API 테스트를 실행합니다.
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m jonghwa_agent.chatbot "Embodied AI에서 JPEG 품질과 이미지 크기를 어떻게 정했어?"
+python test/test_agent.py
+```
+
+에이전트는 개인 사실을 검색 tool로 확인하고 근거와 함께 답변합니다. 테스트는 개인 질문 8개, 미기재 정보 질문 1개, 일반 질문 1개에서 tool 호출과 답변을 검사합니다. 결과는 `test/reports/agent.json`에 저장합니다. tool 단위 테스트만 하려면 `python test/test_agent.py --offline`을 실행합니다.
+
+폴더별 역할은 [아키텍처 문서](docs/architecture.md), 평가 기준은 [적재·검색 검증](docs/ingest-validation.md)과 [에이전트 검증](docs/agent-validation.md)을 참고하세요.

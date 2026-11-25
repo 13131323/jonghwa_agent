@@ -16,6 +16,7 @@ class Settings:
     chroma_port: int = 8000
     collection_name: str = "jonghwa_documents"
     embedding_model: str = "text-embedding-3-small"
+    chat_model: str = "gpt-5-mini"
     api_key: str = field(default="", repr=False)
     chunk_size: int = 1000
     chunk_overlap: int = 150
@@ -40,5 +41,6 @@ def get_settings() -> Settings:
         chroma_port=int(os.getenv("CHROMA_PORT", "8000")),
         collection_name=os.getenv("CHROMA_COLLECTION", "jonghwa_documents"),
         embedding_model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
+        chat_model=os.getenv("OPENAI_CHAT_MODEL", "gpt-5-mini"),
         api_key=os.getenv("OPENAI_API_KEY", "").strip(),
     )
