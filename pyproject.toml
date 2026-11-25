@@ -5,6 +5,7 @@ description = "개인 이력 및 프로젝트 정보를 기반으로 답변하�
 requires-python = ">=3.11"
 dependencies = [
     "langchain==1.5.2",
+    "google-genai==3.6.1",
     "chromadb==1.5.9",
     "langchain-chroma==1.2.0",
     "langchain-openai==1.8.5",
@@ -16,6 +17,9 @@ dependencies = [
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
+
+[project.scripts]
+jonghwa-agent = "jonghwa_agent.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

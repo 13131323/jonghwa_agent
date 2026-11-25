@@ -7,6 +7,7 @@ from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
 from jonghwa_agent.config import Settings, get_settings
+from jonghwa_agent.guardrails import create_input_guardrail, mask_private_output
 from jonghwa_agent.tools import create_personal_search_tool
 
 
@@ -22,7 +23,8 @@ def create_personal_agent(settings: Settings | None = None):
         max_retries=2,
     )
     prompt = files("jonghwa_agent").joinpath("prompts/system.txt").read_text(encoding="utf-8")
-    return create_agent(model=model, tools=[create_personal_search_tool(settings)], system_prompt=prompt)
+    return create_agent(model=model, tools=[create_personal_search_tool(settings)], system_prompt=prompt,
+                        middleware=[create_input_guardrail(settings), mask_private_output])
 
 
 def invoke_agent(agent, question: str):

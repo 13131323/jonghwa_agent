@@ -23,6 +23,8 @@ jonghwa_agent/
 ├── test/
 │   ├── test_ingest.py
 │   ├── test_agent.py
+│   ├── test_guardrails.py
+│   ├── test_cli.py
 │   └── reports/                 # 로컬 평가 보고서, Git 제외
 ├── data/
 │   ├── documents/
@@ -36,10 +38,12 @@ jonghwa_agent/
         ├── ingest.py
         ├── retriever.py
         ├── tools.py
+        ├── guardrails.py
         ├── chatbot.py
         ├── main.py
         └── prompts/
-            └── system.txt
+            ├── system.txt
+            └── guardrail.txt
 ```
 
 ## 역할
@@ -55,6 +59,8 @@ jonghwa_agent/
 | `docs/ingest-validation.md` | 청킹·적재 방식과 검색 평가 기준 |
 | `test/test_ingest.py` | 로컬 테스트, 실제 DB 검사, 질문 10개 검색 평가 |
 | `test/test_agent.py` | tool 단위 테스트, 실제 모델의 tool 선택·답변 검사 |
+| `test/test_guardrails.py` | Gemini 판별·조기 종료·정상 입력의 전체 흐름 검사 |
+| `test/test_cli.py` | CLI의 에이전트 재사용·실패 복구·종료 검사 |
 | `docs/agent-validation.md` | 에이전트 실행 구조와 테스트 기준 |
 | `data/documents/` | 이력서, 포트폴리오, 프로젝트 설명 등 원본 자료 |
 | `data/chroma/` | ChromaDB 영속 저장소 |
@@ -62,8 +68,9 @@ jonghwa_agent/
 | `src/jonghwa_agent/ingest.py` | 원본 문서를 읽고 청크로 나누어 임베딩을 저장 |
 | `src/jonghwa_agent/retriever.py` | 질문과 관련된 문서 청크 검색 |
 | `src/jonghwa_agent/tools.py` | 기존 retriever를 호출하고 청크 본문·출처를 반환하는 검색 tool |
+| `src/jonghwa_agent/guardrails.py` | Gemini 욕설·비방 판별과 before_agent 종료 처리 |
 | `src/jonghwa_agent/chatbot.py` | LangChain 에이전트 생성, 한 질문 실행과 답변 출력 |
-| `src/jonghwa_agent/main.py` | 향후 대화 실행 진입점의 자리. 현재 미구현 |
+| `src/jonghwa_agent/main.py` | `jonghwa-agent` 대화형 CLI. 에이전트를 한 번 생성하고 질문 입력 반복 |
 | `src/jonghwa_agent/prompts/system.txt` | 사용자를 대신해 답하는 방식과 근거 기반 답변 원칙 |
 
 ## 처리 흐름
@@ -77,7 +84,9 @@ data/documents/
     → HTTP ChromaDB: 저장 (컨테이너 볼륨 data/chroma/)
 
 [질문 응답]
-chatbot.py: 질문 입력 → gpt-5-mini 에이전트
+chatbot.py: 질문 입력 → before_agent: Gemini 입력 판별
+    → 욕설·비방: 고정 안내문 + jump_to=end (GPT·검색 미실행)
+    → 정상 입력: gpt-5-mini 에이전트
     → 필요 시 tools.py → retriever.py → ChromaDB 검색
     → 검색 본문·출처를 tool 응답으로 전달
     → 에이전트가 시스템 프롬프트·질문·검색 근거로 답변 생성

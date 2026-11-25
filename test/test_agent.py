@@ -77,10 +77,8 @@ def evaluate_case(case, result):
     payloads = [json.loads(message.content) for message in tools if message.name == "search_personal_documents"]
     evidence = [chunk for payload in payloads for chunk in payload["results"]]
     answer = answer_text(result)
-    citations = re.findall(r"\[근거:([^\]]+)\]", answer)
     source_paths = {chunk["source_path"] for chunk in evidence if "source_path" in chunk}
-    # 출처 경로 자체의 단어가 facts 검사를 통과시키지 않도록 답변 본문만 검사한다.
-    body = re.sub(r"\[근거:[^\]]+\]", "", answer)
+    body = answer
     facts = [any(normalize(term) in normalize(body) for term in alternatives) for alternatives in case["facts"]]
     call_ids = {call["id"] for call in search_calls}
     result_ids = {message.tool_call_id for message in tools if message.name == "search_personal_documents"}
@@ -89,12 +87,11 @@ def evaluate_case(case, result):
         "tool_results_received": call_ids == result_ids,
         "answer_fact_groups": all(facts),
         "no_known_cross_project_facts": not any(normalize(term) in normalize(body) for term in case.get("forbidden", [])),
-        "citations_from_tool": set(citations) <= source_paths,
+        "no_source_annotations": not re.search(r"\[근거:|출처\s*:", answer)
+                                 and not any(path in answer for path in source_paths),
     }
     if case.get("document_id"):
         checks["expected_document_retrieved"] = any(chunk.get("document_id") == case["document_id"] for chunk in evidence)
-        checks["expected_document_cited"] = any(chunk.get("document_id") == case["document_id"] and
-                                                 chunk.get("source_path") in citations for chunk in evidence)
     return {"question": case["question"], "passed": all(checks.values()), "checks": checks,
             "fact_groups_matched": facts, "tool_calls": search_calls, "tool_results": payloads,
             "answer": answer, "trace": [message.model_dump(mode="json") for message in messages]}
@@ -106,7 +103,7 @@ def verify_live(report_path: Path):
     results = []
     report = {"model": settings.chat_model, "embedding_model": settings.embedding_model,
               "created_at": datetime.now(timezone.utc).isoformat(), "cases": results,
-              "limitations": "도구 실행·문서·출처·핵심 문자열을 검사한다. 모든 문장의 사실성·추론 정확성을 자동 보증하지 않는다."}
+              "limitations": "도구 실행·검색 문서·핵심 문자열·출처 표기 미노출을 검사한다. 모든 문장의 사실성·추론 정확성을 자동 보증하지 않는다."}
     for index, case in enumerate(CASES, 1):
         try:
             result = evaluate_case(case, invoke_agent(agent, case["question"]))

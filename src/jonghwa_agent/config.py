@@ -17,6 +17,8 @@ class Settings:
     collection_name: str = "jonghwa_documents"
     embedding_model: str = "text-embedding-3-small"
     chat_model: str = "gpt-5-mini"
+    guardrail_model: str = "gemini-3.5-flash-lite"
+    gemini_api_key: str = field(default="", repr=False)
     api_key: str = field(default="", repr=False)
     chunk_size: int = 1000
     chunk_overlap: int = 150
@@ -42,5 +44,7 @@ def get_settings() -> Settings:
         collection_name=os.getenv("CHROMA_COLLECTION", "jonghwa_documents"),
         embedding_model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
         chat_model=os.getenv("OPENAI_CHAT_MODEL", "gpt-5-mini"),
+        guardrail_model=os.getenv("GEMINI_GUARDRAIL_MODEL", "gemini-3.5-flash-lite"),
+        gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
         api_key=os.getenv("OPENAI_API_KEY", "").strip(),
     )

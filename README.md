@@ -1,60 +1,46 @@
-# jonghwa_agent
-개인 이력 및 프로젝트 정보를 기반으로 답변하는 AI 챗봇 에이전트
+# jonghwa-agent
 
-## ChromaDB 실행
+개인 이력·프로젝트 자료를 기반으로 답하는 AI 에이전트.
 
-Docker Desktop을 Linux 컨테이너 모드로 실행한 뒤 프로젝트 루트에서 실행합니다.
+## 설치
+
+Python 3.11 이상과 Docker Desktop이 필요합니다. 프로젝트 루트의 PowerShell에서 실행합니다.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e .
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+```
+
+`.env`에 `OPENAI_API_KEY`와 `GEMINI_API_KEY`를 입력합니다.
+
+## 실행
+
+ChromaDB 컨테이너가 실행 중이어야 에이전트가 문서를 검색할 수 있습니다. Docker Desktop을 켜고 먼저 실행합니다.
 
 ```powershell
 docker compose up -d
 ```
 
-기본 주소는 `http://127.0.0.1:8000`입니다. 포트를 바꾸려면 `.env.example`을 `.env`로 복사하고 `CHROMA_PORT`를 수정합니다. 기존 `.env`가 있으면 해당 항목만 추가합니다. `.env` 없이도 기본 포트로 실행됩니다.
-
-상태와 연결 확인:
+원본 Markdown을 `data/documents/`에 넣고 최초 실행 또는 문서 변경 시 적재합니다.
 
 ```powershell
-docker compose ps
-Invoke-RestMethod http://127.0.0.1:8000/api/v2/heartbeat
+python -m jonghwa_agent.ingest
 ```
 
-포트를 변경했다면 확인 주소에도 같은 포트를 사용합니다. 정상 응답에는 `nanosecond heartbeat` 값이 포함됩니다. 기동 직후 연결이 실패하면 잠시 후 다시 확인합니다.
-
-로그 확인 및 종료:
+위 컨테이너를 켜둔 상태에서 대화를 시작합니다.
 
 ```powershell
-docker compose logs --tail 50 chroma
+jonghwa-agent
+```
+
+## 종료
+
+CLI는 `/exit` 또는 `Ctrl+C`로 종료합니다. 컨테이너 종료:
+
+```powershell
 docker compose down
 ```
 
-DB 데이터는 `data/chroma/`에 저장되므로 컨테이너를 종료·재생성해도 유지됩니다. 이 폴더를 삭제하면 저장된 데이터가 사라집니다. DB는 로컬에서만 접근할 수 있습니다.
-
-## 문서 적재와 검색 검증
-
-`.env`의 `OPENAI_API_KEY`를 입력하고 `data/documents/`에 YAML frontmatter가 있는 Markdown을 둡니다. 임베딩 모델은 `text-embedding-3-small`입니다.
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e .
-.\.venv\Scripts\python.exe -m jonghwa_agent.ingest --dry-run
-.\.venv\Scripts\python.exe -m jonghwa_agent.ingest
-.\.venv\Scripts\python.exe test/test_ingest.py
-```
-
-적재를 재실행하면 변경 없는 청크는 재임베딩하지 않습니다. 수정된 문서의 사라진 청크는 새 청크 저장 후 제거합니다. 원본 파일 자체를 삭제한 경우 DB 자료는 자동 삭제하지 않습니다.
-
-검증 파일은 로컬 테스트, 실제 DB 무결성·재임베딩 비교, 질문 10개의 top-5 근거 검색을 검사합니다. 상세 결과는 `test/reports/retrieval.json`에 저장합니다. API·DB 없이 테스트하려면 `--offline`을 붙입니다. 실제 적재와 기본 검증은 OpenAI API를 호출합니다.
-
-## 에이전트 실행·검증
-
-`.env`의 `OPENAI_CHAT_MODEL=gpt-5-mini`를 사용합니다. 가상환경을 활성화한 뒤 질문하거나 실제 API 테스트를 실행합니다.
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-python -m jonghwa_agent.chatbot "Embodied AI에서 JPEG 품질과 이미지 크기를 어떻게 정했어?"
-python test/test_agent.py
-```
-
-에이전트는 개인 사실을 검색 tool로 확인하고 근거와 함께 답변합니다. 테스트는 개인 질문 8개, 미기재 정보 질문 1개, 일반 질문 1개에서 tool 호출과 답변을 검사합니다. 결과는 `test/reports/agent.json`에 저장합니다. tool 단위 테스트만 하려면 `python test/test_agent.py --offline`을 실행합니다.
-
-폴더별 역할은 [아키텍처 문서](docs/architecture.md), 평가 기준은 [적재·검색 검증](docs/ingest-validation.md)과 [에이전트 검증](docs/agent-validation.md)을 참고하세요.
+상세 구조와 검증 방법은 [docs](docs/architecture.md)를 참고하세요.
